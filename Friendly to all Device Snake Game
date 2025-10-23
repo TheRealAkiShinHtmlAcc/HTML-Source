@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Universal Snake Game</title>
+<style>
+  body {
+    background: #111;
+    color: #fff;
+    font-family: Arial, sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    margin: 0;
+  }
+
+  h1 {
+    color: #00eaff;
+  }
+
+  canvas {
+    background: #222;
+    border: 2px solid #00eaff;
+    margin-top: 20px;
+  }
+
+  #score {
+    margin-top: 10px;
+    font-size: 1.2rem;
+  }
+
+  button {
+    margin-top: 10px;
+    padding: 10px 20px;
+    background: #00eaff;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: bold;
+  }
+
+  button:hover {
+    background: #00bcd4;
+  }
+
+  /* On-screen mobile controls */
+  .controls {
+    display: grid;
+    grid-template-columns: 80px 80px 80px;
+    grid-template-rows: 80px 80px 80px;
+    gap: 10px;
+    margin-top: 20px;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .control-btn {
+    width: 80px;
+    height: 80px;
+    background: #00eaff;
+    border: none;
+    border-radius: 10px;
+    color: #000;
+    font-size: 1.5rem;
+    font-weight: bold;
+    cursor: pointer;
+  }
+
+  .control-btn:active {
+    background: #00bcd4;
+  }
+
+  .empty {
+    background: none;
+    border: none;
+  }
+</style>
+</head>
+<body>
+
+<h1>🐍 Snake Game</h1>
+<canvas id="game" width="400" height="400"></canvas>
+<p id="score">Score: 0</p>
+<button onclick="resetGame()">Restart</button>
+
+<!-- On-screen mobile controls -->
+<div class="controls">
+  <button class="empty"></button>
+  <button class="control-btn" onclick="setDirection('UP')">⬆️</button>
+  <button class="empty"></button>
+
+  <button class="control-btn" onclick="setDirection('LEFT')">⬅️</button>
+  <button class="empty"></button>
+  <button class="control-btn" onclick="setDirection('RIGHT')">➡️</button>
+
+  <button class="empty"></button>
+  <button class="control-btn" onclick="setDirection('DOWN')">⬇️</button>
+  <button class="empty"></button>
+</div>
+
+<script>
+  const canvas = document.getElementById('game');
+  const ctx = canvas.getContext('2d');
+  const box = 20;
+  let snake, direction, food, score, gameInterval;
+  let gamepads = {};
+
+  function startGame() {
+    snake = [{ x: 200, y: 200 }];
+    direction = 'RIGHT';
+    score = 0;
+    generateFood();
+    document.getElementById('score').textContent = `Score: ${score}`;
+    clearInterval(gameInterval);
+    gameInterval = setInterval(() => {
+      pollGamepad(); // check controller input
+      draw();
+    }, 100);
+  }
+
+  function generateFood() {
+    food = {
+      x: Math.floor(Math.random() * (canvas.width / box)) * box,
+      y: Math.floor(Math.random() * (canvas.height / box)) * box
+    };
+  }
+
+  // Keyboard controls
+  document.addEventListener('keydown', (e) => {
+    if ((e.key === 'ArrowUp' || e.key === 'w') && direction !== 'DOWN') direction = 'UP';
+    if ((e.key === 'ArrowDown' || e.key === 's') && direction !== 'UP') direction = 'DOWN';
+    if ((e.key === 'ArrowLeft' || e.key === 'a') && direction !== 'RIGHT') direction = 'LEFT';
+    if ((e.key === 'ArrowRight' || e.key === 'd') && direction !== 'LEFT') direction = 'RIGHT';
+  });
+
+  // Mobile controls
+  function setDirection(dir) {
+    if (dir === 'UP' && direction !== 'DOWN') direction = 'UP';
+    if (dir === 'DOWN' && direction !== 'UP') direction = 'DOWN';
+    if (dir === 'LEFT' && direction !== 'RIGHT') direction = 'LEFT';
+    if (dir === 'RIGHT' && direction !== 'LEFT') direction = 'RIGHT';
+  }
+
+  // Gamepad support
+  window.addEventListener("gamepadconnected", (e) => {
+    gamepads[e.gamepad.index] = e.gamepad;
+    console.log("Gamepad connected:", e.gamepad.id);
+  });
+
+  window.addEventListener("gamepaddisconnected", (e) => {
+    delete gamepads[e.gamepad.index];
+    console.log("Gamepad disconnected:", e.gamepad.id);
+  });
+
+  function pollGamepad() {
+    const pads = navigator.getGamepads();
+    for (let pad of pads) {
+      if (!pad) continue;
+
+      const [leftX, leftY] = [pad.axes[0], pad.axes[1]];
+      const threshold = 0.5;
+
+      if (leftY < -threshold && direction !== 'DOWN') direction = 'UP';
+      if (leftY > threshold && direction !== 'UP') direction = 'DOWN';
+      if (leftX < -threshold && direction !== 'RIGHT') direction = 'LEFT';
+      if (leftX > threshold && direction !== 'LEFT') direction = 'RIGHT';
+
+      // D-pad buttons (for most controllers)
+      if (pad.buttons[12]?.pressed && direction !== 'DOWN') direction = 'UP';
+      if (pad.buttons[13]?.pressed && direction !== 'UP') direction = 'DOWN';
+      if (pad.buttons[14]?.pressed && direction !== 'RIGHT') direction = 'LEFT';
+      if (pad.buttons[15]?.pressed && direction !== 'LEFT') direction = 'RIGHT';
+    }
+  }
+
+  function draw() {
+    ctx.fillStyle = '#111';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Draw food
+    ctx.fillStyle = 'red';
+    ctx.fillRect(food.x, food.y, box, box);
+
+    // Draw snake
+    ctx.fillStyle = '#00eaff';
+    snake.forEach(segment => {
+      ctx.fillRect(segment.x, segment.y, box, box);
+    });
+
+    // Move snake
+    let head = { ...snake[0] };
+    if (direction === 'UP') head.y -= box;
+    if (direction === 'DOWN') head.y += box;
+    if (direction === 'LEFT') head.x -= box;
+    if (direction === 'RIGHT') head.x += box;
+
+    // Collision detection
+    if (
+      head.x < 0 || head.x >= canvas.width ||
+      head.y < 0 || head.y >= canvas.height ||
+      snake.some(s => s.x === head.x && s.y === head.y)
+    ) {
+      clearInterval(gameInterval);
+      alert(`💀 Game Over! Final score: ${score}`);
+      return;
+    }
+
+    snake.unshift(head);
+
+    // Eat food
+    if (head.x === food.x && head.y === food.y) {
+      score++;
+      document.getElementById('score').textContent = `Score: ${score}`;
+      generateFood();
+    } else {
+      snake.pop();
+    }
+  }
+
+  function resetGame() {
+    startGame();
+  }
+
+  startGame();
+</script>
+
+</body>
+</html>
