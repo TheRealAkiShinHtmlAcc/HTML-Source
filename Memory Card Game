@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Memory Card Game</title>
+<style>
+  body {
+    background-color: #111;
+    color: #fff;
+    font-family: Arial, sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    margin: 0;
+  }
+
+  h1 {
+    color: #00eaff;
+    margin-bottom: 20px;
+  }
+
+  .game-board {
+    display: grid;
+    grid-template-columns: repeat(4, 100px);
+    gap: 15px;
+  }
+
+  .card {
+    width: 100px;
+    height: 100px;
+    background: #222;
+    border: 2px solid #00eaff;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    cursor: pointer;
+    transition: transform 0.3s, background 0.3s;
+  }
+
+  .card.flipped {
+    background: #00eaff;
+    color: #000;
+    cursor: default;
+  }
+
+  .card.matched {
+    background: #0f0;
+    color: #000;
+  }
+
+  #message {
+    margin-top: 20px;
+    font-size: 1.3rem;
+  }
+
+  button {
+    margin-top: 20px;
+    padding: 10px 20px;
+    background: #00eaff;
+    color: black;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: bold;
+  }
+
+  button:hover {
+    background: #00bcd4;
+  }
+</style>
+</head>
+<body>
+
+<h1>🧠 Memory Card Game</h1>
+<div class="game-board" id="gameBoard"></div>
+<p id="message"></p>
+<button onclick="resetGame()">Restart</button>
+
+<script>
+  const symbols = ['🍎','🍌','🍇','🍓','🍒','🍉','🍋','🍍'];
+  let cards = [];
+  let firstCard = null;
+  let secondCard = null;
+  let lockBoard = false;
+  const board = document.getElementById('gameBoard');
+  const message = document.getElementById('message');
+
+  function createBoard() {
+    // Duplicate and shuffle
+    cards = [...symbols, ...symbols]
+      .sort(() => 0.5 - Math.random())
+      .map(symbol => createCard(symbol));
+
+    board.innerHTML = '';
+    cards.forEach(card => board.appendChild(card));
+  }
+
+  function createCard(symbol) {
+    const card = document.createElement('div');
+    card.classList.add('card');
+    card.dataset.symbol = symbol;
+    card.textContent = '';
+    card.addEventListener('click', flipCard);
+    return card;
+  }
+
+  function flipCard() {
+    if (lockBoard || this.classList.contains('flipped')) return;
+
+    this.classList.add('flipped');
+    this.textContent = this.dataset.symbol;
+
+    if (!firstCard) {
+      firstCard = this;
+      return;
+    }
+
+    secondCard = this;
+    lockBoard = true;
+
+    checkForMatch();
+  }
+
+  function checkForMatch() {
+    const isMatch = firstCard.dataset.symbol === secondCard.dataset.symbol;
+    if (isMatch) {
+      firstCard.classList.add('matched');
+      secondCard.classList.add('matched');
+      resetTurn();
+      checkWin();
+    } else {
+      setTimeout(() => {
+        firstCard.classList.remove('flipped');
+        secondCard.classList.remove('flipped');
+        firstCard.textContent = '';
+        secondCard.textContent = '';
+        resetTurn();
+      }, 800);
+    }
+  }
+
+  function resetTurn() {
+    [firstCard, secondCard, lockBoard] = [null, null, false];
+  }
+
+  function checkWin() {
+    const matchedCards = document.querySelectorAll('.matched');
+    if (matchedCards.length === cards.length) {
+      message.textContent = '🎉 You matched them all!';
+    }
+  }
+
+  function resetGame() {
+    message.textContent = '';
+    createBoard();
+  }
+
+  createBoard();
+</script>
+
+</body>
+</html>
